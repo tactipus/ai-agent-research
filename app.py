@@ -22,7 +22,8 @@ from fastapi import FastAPI
 load_dotenv()
 browserless_api_key = os.getenv("BROWSERLESS_API_KEY")
 serper_api_key = os.getenv("SERP_API_KEY")
-openai_api_key = "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"
+openai_api_key = os.getenv("OPENAI_API_KEY")
+
 
 # search tool
 
@@ -178,9 +179,9 @@ agent = initialize_agent(
 
 # 4. Use streamlit to create a web app
 def main():
-    st.set_page_config(page_title="AI research agent", page_icon=":bird:")
+    st.set_page_config(page_title="minerva's owl", page_icon=":bird:")
 
-    st.header("AI research agent :bird:")
+    st.header("minerva's owl :bird:")
     query = st.text_input("Research goal")
 
     if query:
