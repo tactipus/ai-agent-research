@@ -1,15 +1,15 @@
 import os
 from dotenv import load_dotenv
 
-from langchain import PromptTemplate
+from langchain_core.prompts import PromptTemplate
 from langchain.agents import initialize_agent, Tool
 from langchain.agents import AgentType
-from langchain.chat_models import ChatOpenAI
-from langchain.prompts import MessagesPlaceholder
+from langchain_community.chat_models import ChatOpenAI
+from langchain_core.prompts import MessagesPlaceholder
 from langchain.memory import ConversationSummaryBufferMemory
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains.summarize import load_summarize_chain
-from langchain.tools import BaseTool
+from langchain_community.tools import BaseTool
 from pydantic import BaseModel, Field
 from typing import Type
 from bs4 import BeautifulSoup
@@ -22,6 +22,7 @@ from fastapi import FastAPI
 load_dotenv()
 browserless_api_key = os.getenv("BROWSERLESS_API_KEY")
 serper_api_key = os.getenv("SERP_API_KEY")
+openai_api_key = "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"
 
 # search tool
 
@@ -120,8 +121,8 @@ class ScrapeWebsiteInput(BaseModel):
 
 
 class ScrapeWebsiteTool(BaseTool):
-    name = "scrape_website"
-    description = "useful when you need to get data from a website url, passing both url and objective to the function; DO NOT make up any url, the url should only be from the search results"
+    name: str = "scrape_website"
+    description: str = "useful when you need to get data from a website url, passing both url and objective to the function; DO NOT make up any url, the url should only be from the search results"
     args_schema: Type[BaseModel] = ScrapeWebsiteInput
 
     def _run(self, objective: str, url: str):
@@ -131,7 +132,7 @@ class ScrapeWebsiteTool(BaseTool):
         raise NotImplementedError("error here")
 
 
-# create langchain agent with above tools
+# create langchain_community agent with above tools
 
 
 tools = [
@@ -161,7 +162,7 @@ agent_kwargs = {
     "system_message": system_message,
 }
 
-llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo")
+llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo", api_key=openai_api_key)
 memory = ConversationSummaryBufferMemory(
     memory_key="memory", return_messages=True, llm=llm, max_token_limit=1000)
 
