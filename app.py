@@ -181,15 +181,40 @@ agent = initialize_agent(
 def main():
     st.set_page_config(page_title="minerva's owl", page_icon=":bird:")
 
+    # Initialize session state for chat history if it doesn't exist
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+    if "agent" not in st.session_state:
+        st.session_state.agent = agent
+
     st.header("minerva's owl :bird:")
-    query = st.text_input("Research goal")
+    
+    # Display chat history
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.write(message["content"])
+
+    # Add a clear button
+    if st.button("Clear Conversation"):
+        st.session_state.messages = []
+        st.session_state.agent = agent
+        st.rerun()
+
+    # Chat input
+    query = st.chat_input("Research goal")
 
     if query:
-        st.write("Doing research for ", query)
+        # Add user message to chat history
+        st.session_state.messages.append({"role": "user", "content": query})
+        with st.chat_message("user"):
+            st.write(query)
 
-        result = agent({"input": query})
-
-        st.info(result['output'])
+        # Get agent response
+        with st.chat_message("assistant"):
+            with st.spinner("Researching..."):
+                result = st.session_state.agent({"input": query})
+                st.write(result['output'])
+                st.session_state.messages.append({"role": "assistant", "content": result['output']})
 
 
 if __name__ == '__main__':
