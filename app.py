@@ -181,9 +181,20 @@ agent = initialize_agent(
 def main():
     st.set_page_config(page_title="minerva's owl", page_icon=":bird:")
 
+    def save_conversation_history(messages):
+        with open('conversation_history.json', 'w') as f:
+            json.dump(messages, f)
+
+    def load_conversation_history():
+        try:
+            with open('conversation_history.json', 'r') as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return []
+
     # Initialize session state for chat history if it doesn't exist
     if "messages" not in st.session_state:
-        st.session_state.messages = []
+        st.session_state.messages = load_conversation_history()
     if "agent" not in st.session_state:
         st.session_state.agent = agent
 
@@ -198,6 +209,7 @@ def main():
     if st.button("Clear Conversation"):
         st.session_state.messages = []
         st.session_state.agent = agent
+        save_conversation_history([])  # Save empty history when clearing
         st.rerun()
 
     # Chat input
@@ -215,6 +227,8 @@ def main():
                 result = st.session_state.agent({"input": query})
                 st.write(result['output'])
                 st.session_state.messages.append({"role": "assistant", "content": result['output']})
+                # Save the updated conversation history after each interaction
+                save_conversation_history(st.session_state.messages)
 
 
 if __name__ == '__main__':
@@ -235,3 +249,5 @@ def researchAgent(query: Query):
     content = agent({"input": query})
     actual_content = content['output']
     return actual_content
+
+# Add these new functions for persistent memory
