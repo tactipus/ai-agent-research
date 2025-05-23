@@ -1,29 +1,34 @@
 import os
 from dotenv import load_dotenv
+import getpass
 
 from langchain_core.prompts import PromptTemplate
-from langchain.agents import initialize_agent, Tool
-from langchain.agents import AgentType
-from langchain_community.chat_models import ChatOpenAI
-from langchain_core.prompts import MessagesPlaceholder
+from langchain.agents import initialize_agent, Tool, AgentType
+# from langchain.agents import AgentExecutor, create_react_agent
+from langchain_openai import ChatOpenAI
+from langchain.prompts import MessagesPlaceholder
 from langchain.memory import ConversationSummaryBufferMemory
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains.summarize import load_summarize_chain
-from langchain_community.tools import BaseTool
+from langchain.tools import BaseTool
 from pydantic import BaseModel, Field
 from typing import Type
 from bs4 import BeautifulSoup
 import requests
 import json
-import streamlit as st
 from langchain.schema import SystemMessage
 from fastapi import FastAPI
+import streamlit as st
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 load_dotenv()
 browserless_api_key = os.getenv("BROWSERLESS_API_KEY")
 serper_api_key = os.getenv("SERP_API_KEY")
 openai_api_key = os.getenv("OPENAI_API_KEY")
+# gemini_key = os.getenv("GOOGLE_API_KEY")
 
+# if "GOOGLE_API_KEY" not in os.environ:
+#     os.environ["GOOGLE_API_KEY"] = getpass.getpass("Enter your Google AI API key: ")
 
 # search tool
 
@@ -88,7 +93,8 @@ def scrape_website(objective: str, url: str):
 
 
 def summary(objective, content):
-    llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo")
+    llm = ChatOpenAI(temperature=0, model="gpt-4o-mini")
+    # llm_gemini = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
 
     text_splitter = RecursiveCharacterTextSplitter(
         separators=["\n\n", "\n"], chunk_size=10000, chunk_overlap=500)
@@ -102,7 +108,7 @@ def summary(objective, content):
         template=map_prompt, input_variables=["text", "objective"])
 
     summary_chain = load_summarize_chain(
-        llm=llm,
+        llm=llm_gemini,
         chain_type='map_reduce',
         map_prompt=map_prompt_template,
         combine_prompt=map_prompt_template,
@@ -135,7 +141,6 @@ class ScrapeWebsiteTool(BaseTool):
 
 # create langchain_community agent with above tools
 
-
 tools = [
     Tool(
         name="Search",
@@ -163,19 +168,22 @@ agent_kwargs = {
     "system_message": system_message,
 }
 
-llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo", api_key=openai_api_key)
+llm = ChatOpenAI(temperature=0, model="gpt-4o-mini", api_key=openai_api_key)
+# llm_gemini = ChatGoogleGenerativeAI(
+#     model="gemini-2.0-flash",
+#     temperature=0
+#     )
 memory = ConversationSummaryBufferMemory(
     memory_key="memory", return_messages=True, llm=llm, max_token_limit=1000)
 
 agent = initialize_agent(
     tools,
     llm,
+    agent_kwargs=agent_kwargs,
     agent=AgentType.OPENAI_FUNCTIONS,
     verbose=True,
-    agent_kwargs=agent_kwargs,
-    memory=memory,
+    memory=memory
 )
-
 
 # 4. Use streamlit to create a web app
 def main():
@@ -199,7 +207,7 @@ def main():
         st.session_state.agent = agent
 
     st.header("minerva's owl :bird:")
-    
+
     # Display chat history
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
@@ -229,7 +237,6 @@ def main():
                 st.session_state.messages.append({"role": "assistant", "content": result['output']})
                 # Save the updated conversation history after each interaction
                 save_conversation_history(st.session_state.messages)
-
 
 if __name__ == '__main__':
     main()
