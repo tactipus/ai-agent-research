@@ -1,0 +1,10 @@
+[project]
+name = "writer-tool"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "autogen-agentchat>=0.7.4",
+    "autogen-ext[openai]>=0.7.4",
+]
