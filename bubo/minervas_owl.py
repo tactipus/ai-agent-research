@@ -246,7 +246,7 @@ def main():
     with MainTab:
         st.header("Bubo :owl:")
         # Chat input
-        query = st.chat_input("Would you kindly share your research goals with me? pooppy")
+        query = st.chat_input("Would you kindly share your research goals with me?")
 
         if query:
             st.session_state.messages.append({"role": "user", "content": query})
