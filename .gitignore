@@ -40,3 +40,5 @@ htmlcov/
 # Misc
 .cache
 .tmp
+talleyrand/.env
+bubo/.env
