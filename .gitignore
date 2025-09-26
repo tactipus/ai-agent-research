@@ -42,3 +42,4 @@ htmlcov/
 .tmp
 talleyrand/.env
 bubo/.env
+writer-tool/.env

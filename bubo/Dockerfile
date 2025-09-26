@@ -78,4 +78,4 @@ USER appuser
 
 EXPOSE 8500
 
-CMD streamlit run minervas_owl.py --server.port 8500
+CMD streamlit run main.py --server.port 8500

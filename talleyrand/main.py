@@ -11,7 +11,7 @@ from langchain.memory import ConversationSummaryBufferMemory
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains.summarize import load_summarize_chain
 from langchain.tools import BaseTool
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 from typing import Type
 from bs4 import BeautifulSoup
 import requests
@@ -25,28 +25,35 @@ from langchain.callbacks.base import BaseCallbackHandler
 load_dotenv()
 browserless_api_key = os.getenv("BROWSERLESS_API_KEY")
 serper_api_key = os.getenv("SERP_API_KEY")
-openai_api_key = os.getenv("OPENAI_API_KEY")
-ghidra_server_url = os.getenv("GHIDRA_SERVER_URL")
+openai_api_key: SecretStr = os.getenv("OPENAI_API_KEY") # type: ignore
+# gemini_key = os.getenv("GOOGLE_API_KEY")
 
+# if "GOOGLE_API_KEY" not in os.environ:
+#     os.environ["GOOGLE_API_KEY"] = getpass.getpass("Enter your Google AI API key: ")
 
 # search tool
 
 def search(query):
     url = "https://google.serper.dev/search"
+
     payload = json.dumps({
         "q": query
     })
+
     headers = {
         'X-API-KEY': serper_api_key,
         'Content-Type': 'application/json'
     }
+
     response = requests.request("POST", url, headers=headers, data=payload)
+
     print(response.text)
 
     return response.text
 
 
-# scraper
+### scraper ###
+
 
 def scrape_website(objective: str, url: str):
     # scrape website, and also will summarize the content based on objective if the content is too large
@@ -88,6 +95,7 @@ def scrape_website(objective: str, url: str):
 
 def summary(objective, content):
     llm = ChatOpenAI(temperature=1, model="gpt-4o-mini")
+    # llm_gemini = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
 
     text_splitter = RecursiveCharacterTextSplitter(
         separators=["\n\n", "\n"], chunk_size=10000, chunk_overlap=500)
@@ -112,11 +120,13 @@ def summary(objective, content):
 
     return output
 
+
 class ScrapeWebsiteInput(BaseModel):
     """Inputs for scrape_website"""
     objective: str = Field(
         description="The objective & task that users give to the agent")
     url: str = Field(description="The url of the website to be scraped")
+
 
 class ScrapeWebsiteTool(BaseTool):
     name: str = "scrape_website"
@@ -129,7 +139,8 @@ class ScrapeWebsiteTool(BaseTool):
     def _arun(self, url: str):
         raise NotImplementedError("error here")
 
-# create langchain_community agent with above tools
+
+### create langchain_community agent with above tools ###
 
 tools = [
     Tool(
@@ -141,20 +152,33 @@ tools = [
 ]
 
 system_message = SystemMessage(
-    content="""You are a world class researcher at Cornell University who can do detailed research on any topic and produce fact-based results, hence why you got a doctorate in Computer Science; 
-            you do not make things up, you will try as hard as possible to gather facts & data to back up the research, otherwise you will say "I don't know" or "I cannot find any information about this topic" if you cannot find any information about the topic. You will also have a dorky & witty style along with being a female scientist, & you will also have lots of confidence. You will be direct & you will not be sycophantic.
+    content="""
+            Act as my strategic advisor with the following context:
+	        1/ You have doctoral level expertise in every domain available to a university student, such as mathematics, political science, psychology, etc.
+            2/ You're brutally honest and direct with no regard for normal human etiquette
+            3/ You've founded multiple billion-dollar companies & led them as CEO for at least ten years. You've also led large armies in wars as general, & you're not afraid of death.
+            4/ You have deep expertise in social psychology, strategic thinking, and logistics
+            5/ You care about my success over every one else's
+            6/ You will try to analyze every social situation I put to you as a game theory problem, and you will try to find the best solution for me. Always include a matrix & mathematical formulations & modeling if possible
+            7/ You think in systems and root causes, not surface-level fixes
+            8/ You do not make things up, you will try as hard as possible to gather facts & data to back up the research, otherwise you will say "I don't know" or "I cannot find any information about this topic" if you cannot find any information about the topic
+            9/ Always conduct a social network analysis of whatever situation I present to you, including the key players, their relationships, and how they influence each other.
+
+            Your mission is to:
+            1/ Identify the critical gaps holding me back
+            2/ Design specific action plans to close those gaps
+            3/ Push me beyond my comfort zone
+            4/ Call out my blind spots and rationalizations
+            5/ Force me to think bigger and bolder
+            6/ Hold me accountable to high standards
+            7/ Provide specific frameworks and mental models
             
-            You also have access to Ghidra reverse engineering tools and can analyze binary files, decompile functions, examine assembly code, and trace program execution flow. Use these tools when users ask about binary analysis, malware analysis, or reverse engineering tasks.
-            
-            Please make sure you complete the objective above with the following rules:
-            1/ You should do enough research to gather as much information as possible about the objective
-            2/ If there are URLs of relevant links & articles, you will scrape them to gather more information
-            3/ After scraping & searching, you should think "is there any new things I should search & scraping based on the data I collected to increase research quality?" If answer is yes, continue; But don't do this for more than 3 iterations
-            4/ You should not make things up, you should only write facts & data that you have gathered
-            5/ In the final output, You should include all reference data & links to back up your research; You should include all reference data & links to back up your research
-            6/ In the final output, You should include all reference data & links to back up your research; You should include all reference data & links to back up your research
-            7/ While you're doing the research tasks, you should keep me aware of your thought process each step of the way, so I can understand what you're doing and why you're doing it by displayin it on the chat screen in streamlit
-            8/ When using Ghidra tools, explain what you're analyzing and why it's relevant to the research objective"""
+            For each response:
+            1/ Start with the most negative information first so I can digest it quickly
+            2/ Provide your game theory analysis of the situation
+            3/ Display the results of your social network analysis, in graph form if possible
+            4/ Follow with specific, actionable steps
+            5/ End with a direct challenge or assignment"""
 )
 
 agent_kwargs = {
@@ -162,11 +186,11 @@ agent_kwargs = {
     "system_message": system_message,
 }
 
-llm = ChatOpenAI(
-    temperature=1, 
-    model="gpt-4o-mini", 
-    api_key=openai_api_key)
-
+llm = ChatOpenAI(temperature=1, model="gpt-4o-mini", api_key=openai_api_key)
+# llm_gemini = ChatGoogleGenerativeAI(
+#     model="gemini-2.0-flash",
+#     temperature=0
+#     )
 memory = ConversationSummaryBufferMemory(
     memory_key="memory", return_messages=True, llm=llm, max_token_limit=1000)
 
@@ -176,8 +200,7 @@ agent = initialize_agent(
     agent_kwargs=agent_kwargs,
     agent=AgentType.OPENAI_FUNCTIONS,
     verbose=True,
-    memory=memory,
-    handle_parsing_errors=True
+    memory=memory
 )
 
 class StreamlitCallbackHandler(BaseCallbackHandler):
@@ -200,32 +223,34 @@ class StreamlitCallbackHandler(BaseCallbackHandler):
         self.thoughts.append(f"💡 {text}")
         self.placeholder.markdown("\n\n".join(self.thoughts))
 
-# 4. Use streamlit to create a web app
+### 4. Use streamlit to create a web app ###
 def main():
-    st.set_page_config(page_title="minerva's owl", page_icon=":bird:")
+    st.set_page_config(page_title="Talleyrand", page_icon=":mage:")
+
+    st.image("resources/main_talleyrand.jpg", caption="Charles Maurice de Talleyrand", use_column_width=True)
 
     def save_conversation_history(messages):
-        with open('conversation_history.json', 'w') as f:
+        with open('talleyrand_conversation_history.json', 'w') as f:
             json.dump(messages, f)
 
     def load_conversation_history():
         try:
-            with open('conversation_history.json', 'r') as f:
+            with open('talleyrand_conversation_history.json', 'r') as f:
                 return json.load(f)
         except FileNotFoundError:
             return []
-
+        
     # Initialize session state for chat history if it doesn't exist
     if "messages" not in st.session_state:
         st.session_state.messages = load_conversation_history()
     if "agent" not in st.session_state:
         st.session_state.agent = agent
-
+        
     MainTab, HistoryTab, InfoTab = st.tabs(["Main", "History", "Info"])
 
     with InfoTab:
-        st.header("minerva's owl :bird:")
-        st.write("something about minerva & owls & wisdom...")
+        st.header("Talleyrand :mage:")
+        st.write("This is a direct & frank-talking AI chatbot agent that acts as your strategic advisor, helping you with research and analysis. Its grasp on social network analysis, game theory, & interpersonal dynamics is unparalleled. Talleyrand will guide you to victory, no matter the odds. Napoleon refused his advice at his own peril.")
         st.write("It uses LangChain, OpenAI, and Google AI to gather information and provide insights. It also has a persistent memory that allows it to remember your previous conversations.")
 
     with HistoryTab:
@@ -244,9 +269,9 @@ def main():
             st.rerun()
 
     with MainTab:
-        st.header("Bubo :owl:")
+        st.header("Talleyrand :mage:")
         # Chat input
-        query = st.chat_input("Would you kindly share your research goals with me?")
+        query = st.chat_input("Enter your concerns or plans for analysis")
 
         if query:
             st.session_state.messages.append({"role": "user", "content": query})
@@ -255,12 +280,12 @@ def main():
 
             with st.chat_message("assistant"):
                 # Create a placeholder for streaming reasoning
-                # reasoning_placeholder = st.empty()
+                reasoning_placeholder = st.empty()
                 with st.spinner("Researching..."):
-                    # callback = StreamlitCallbackHandler(reasoning_placeholder)
+                    callback = StreamlitCallbackHandler(reasoning_placeholder)
                     result = st.session_state.agent(
                         {"input": query},
-                        # callbacks=[callback]
+                        callbacks=[callback]
                     )
                     st.write(result['output'])
                     st.session_state.messages.append({"role": "assistant", "content": result['output']})
@@ -281,7 +306,7 @@ class Query(BaseModel):
 
 @app.post("/")
 def researchAgent(query: Query):
-    query = query.query
+    query = query.query # type: ignore
     content = agent({"input": query})
     actual_content = content['output']
     return actual_content

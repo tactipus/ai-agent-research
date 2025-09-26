@@ -51,4 +51,4 @@ USER appuser
 EXPOSE 8000
 
 # Run the application.
-CMD streamlit run 'talleyrand.py' --server.port 8501
+CMD streamlit run 'main.py' --server.port 8501
